@@ -9,6 +9,7 @@
 import UIKit
 import MapKit
 import CoreLocation
+import RealmSwift
 
 class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDelegate {
 
@@ -17,15 +18,22 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     var userLocation: CLLocation!
     var alertTextField: UITextField!
     
+    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
+
         
         determineCurrentLocation()
+        
+        //Show saved locations in realm database
+        showSavedLocations()
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        //Init realm
+        realm = try! Realm()
         
     }
     
@@ -59,6 +67,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         alert.addTextField { (textField) in
             self.alertTextField = textField
             textField.placeholder = "E.g. My Car"
+            textField.autocapitalizationType = .words
         }
         
         let addAction = UIAlertAction(title: "Add", style: .default) { (addAction) in
@@ -66,6 +75,15 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             myAnnotation.coordinate = CLLocationCoordinate2DMake(self.userLocation.coordinate.latitude, self.userLocation.coordinate.longitude);
             myAnnotation.title = self.alertTextField.text
             self.mapView.addAnnotation(myAnnotation)
+            
+            let newLocation = Location()
+            newLocation.latitude = self.userLocation.coordinate.latitude
+            newLocation.longitude = self.userLocation.coordinate.longitude
+            newLocation.title = self.alertTextField.text!
+            
+            try! realm.write ({
+                realm.add(newLocation)
+            })
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .destructive) { (cancel) in }
         
@@ -74,6 +92,16 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         
         present(alert, animated: true, completion: nil)
         
+    }
+    
+    func showSavedLocations() {
+        //Loop through stored locations and create annotations on map
+        for location in locations {
+            let myAnnotation: MKPointAnnotation = MKPointAnnotation()
+            myAnnotation.coordinate = CLLocationCoordinate2DMake(location.latitude, location.longitude);
+            myAnnotation.title = location.title
+            self.mapView.addAnnotation(myAnnotation)
+        }
     }
     
     
